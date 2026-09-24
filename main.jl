@@ -70,12 +70,10 @@ function mcp_model()
     @constraint(M, py_mc[i=1:2], 14*X[i] - 14/28*RA/PY[i] ⟂ PY[i])
 
     # PX - Market Clearance
-    @constraint(M, px_mc[i=1:2], sum(5/14 * 14 * -(ucf_X_s[j]/px_price[i])^2*X[j] for j=1:2) + 10 ⟂ PX[i])
-
-    
+    @constraint(M, px_mc[i=1:2], -sum(5/14 * 14 * (ucf_X_s[j]/px_price[i])^2*X[j] for j=1:2) + 10 ⟂ PX[i])
 
     # PZ - Market Clearance
-    @constraint(M, pz_mc[i=1:2], sum(PZ_NUMS[j,i]/14 * 14 * -(ucf_X_s[j]/ucf_X_nest[j])^2*(ucf_X_nest[j]/PZ[i])^1*X[j] for j=1:2) + sum(PZ_NUMS[:,i]) ⟂ PZ[i])
+    @constraint(M, pz_mc[i=1:2], -sum(PZ_NUMS[j,i]/14 * 14 * (ucf_X_s[j]/ucf_X_nest[j])^2*(ucf_X_nest[j]/PZ[i])^1*X[j] for j=1:2) + sum(PZ_NUMS[:,i]) ⟂ PZ[i])
 
     # Income Balance
     @constraint(M, income_balance, RA - (sum(PX[j]*10 for j=1:2) + sum(PZ[j]*sum(PZ_NUMS[:,j]) for j=1:2)) + sum(5* tax*PX[j]*X[i]*(ucf_X_s[i]/px_price[j])^2 for i=1:2,j=1:2)  ⟂ RA)
@@ -99,8 +97,24 @@ solve!(M_mps)
 
 optimize!(M_mcp)
 
-value.(M_mcp[:X])
-value.(M_mps[:X])
 
-value.(M_mcp[:PX])
-value.(M_mps[:PX])
+
+
+
+
+
+
+
+
+
+
+set_start_value.(M_mcp[:X], value.(M_mps[:X]))
+set_start_value.(M_mcp[:PX], value.(M_mps[:PX]))
+set_start_value.(M_mcp[:PY], value.(M_mps[:PY]))
+set_start_value.(M_mcp[:PZ], value.(M_mps[:PZ]))
+set_start_value(M_mcp[:RA], value(M_mps[:RA]))
+set_start_value(M_mcp[:tax], value(M_mps[:tax]))
+
+
+JuMP.set_attribute(M_mcp, "cumulative_iteration_limit", 0)
+optimize!(M_mcp)
